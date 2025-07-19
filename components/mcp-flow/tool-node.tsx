@@ -166,7 +166,7 @@ export default function ToolNode({ id, data }: { id: string; data: any }) {
   return (
     <Card className="w-[800px] shadow-[0px_1px_3px_0px_#00000024]" style={{ transition: 'border-color 0.2s, border-width 0.1s' }}>
       <CardHeader className="flex flex-row items-center justify-between bg-neutral-100 dark:bg-neutral-900 px-5 py-1">
-        <CardTitle className="text-md grow">Tool Node</CardTitle>
+        <CardTitle className="text-md grow">{data?.name || "Tool Node"}</CardTitle>
         <Button
           variant="ghost"
           size="icon"

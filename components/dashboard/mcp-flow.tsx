@@ -2,6 +2,7 @@
 
 import "@xyflow/react/dist/style.css";
 import React from "react";
+import JSZip from "jszip";
 
 import {
   Background,
@@ -48,6 +49,8 @@ import { useConnectionHighlight } from "../mcp-flow/hooks/use-connection-highlig
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 // Utils
 import { createClient } from "@/lib/supabase/client";
+import { LAYOUT_CONFIG } from "@/lib/mcp/constants";
+import { generateServerCode, type ServerConfig, type Tool } from "@/lib/mcp/generate-mcp";
 
 // Type definitions
 type NodeData = Record<string, any>;
@@ -126,7 +129,7 @@ function FlowWrapper({
   
   // Center the flow content after nodes and edges are loaded
   useEffect(() => {
-    if (nodes.length > 0 && initialLoadRef.current) {
+    if (nodes.length > 0) {
       // Clear any existing timeout
       if (centeringTimeoutRef.current) {
         clearTimeout(centeringTimeoutRef.current);
@@ -134,8 +137,13 @@ function FlowWrapper({
       
       // Set a timeout to ensure nodes are properly rendered
       centeringTimeoutRef.current = setTimeout(() => {
-        reactFlowInstance.fitView(DEFAULT_FIT_VIEW_OPTIONS);
-        initialLoadRef.current = false; // Mark initial load as complete
+        // Only auto-fit on initial load or when nodes are significantly changed
+        if (initialLoadRef.current || nodes.length > 1) {
+          reactFlowInstance.fitView(DEFAULT_FIT_VIEW_OPTIONS);
+          if (initialLoadRef.current) {
+            initialLoadRef.current = false; // Mark initial load as complete
+          }
+        }
       }, CENTER_FLOW_TIMEOUT);
     }
     
@@ -144,7 +152,7 @@ function FlowWrapper({
         clearTimeout(centeringTimeoutRef.current);
       }
     };
-  }, [nodes, edges, reactFlowInstance]);
+  }, [nodes.length, reactFlowInstance]); // Changed dependency to nodes.length to trigger on significant changes
 
   return (
     <ReactFlow
@@ -445,39 +453,232 @@ export default function McpFlow(): React.JSX.Element {
       return;
     }
 
-    // Get current user ID for naming
-    const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id?.slice(0, 8) || 'user';
+    try {
+      // Get current user ID for naming
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id?.slice(0, 8) || 'user';
+      const serverName = `mcp-server-${userId}`;
 
-    // Generate MCP server configuration
-    const mcpConfig = {
-      name: `mcp-server-${userId}`,
-      version: "1.0.0",
-      tools: toolNodes.map(node => ({
-        id: node.id,
-        name: node.data?.url?.split('/').pop() || `tool-${node.id}`,
+      // Convert tool nodes to the proper Tool format
+      const tools: Tool[] = toolNodes.map(node => ({
+        name: node.data?.url?.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '_') || `tool_${node.id}`,
         description: node.data?.promptDescription || "Generated tool from flow",
-        method: node.data?.method || "GET",
-        url: node.data?.url || "",
         parameters: node.data?.parameters || [],
-        headers: node.data?.headers || [],
-        requestBody: node.data?.requestBody || ""
-      }))
-    };
+        implementation: `async ({ ${node.data?.parameters?.map((p: any) => p.name).join(', ') || ''} }) => {
+    // Implementation for ${node.data?.url || 'endpoint'}
+    const url = "${node.data?.url || ''}";
+    const method = "${node.data?.method || 'GET'}";
+    
+    try {
+      const response = await fetch(url${node.data?.method === 'POST' || node.data?.method === 'PUT' ? `, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ${node.data?.headers?.map((h: any) => `'${h.key}': '${h.value}'`).join(',\n          ') || ''}
+        },
+        body: JSON.stringify(${node.data?.requestBody ? JSON.stringify(node.data.requestBody) : '{}'})
+      }` : ''});
+      
+      if (!response.ok) {
+        throw new Error(\`HTTP error! status: \${response.status}\`);
+      }
+      
+      const data = await response.json();
+      return { 
+        content: [{
+          type: "text",
+          text: JSON.stringify(data, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text", 
+          text: \`Error: \${error.message}\`
+        }],
+        isError: true
+      };
+    }
+  }`
+      }));
 
-    // Create downloadable JSON file
-    const dataStr = JSON.stringify(mcpConfig, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `mcp-server-${userId}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-    
-    toast.success("MCP server configuration downloaded");
+      // Create server configuration
+      const serverConfig: ServerConfig = {
+        name: serverName,
+        version: "1.0.0",
+        description: `Generated MCP server with ${tools.length} tools`,
+        transport: 'stdio',
+        tools,
+        resources: [],
+        prompts: []
+      };
+
+      // Generate server code and package.json
+      const { serverCode, packageJson } = generateServerCode(serverConfig);
+
+      // Create ZIP file
+      const zip = new JSZip();
+      zip.file("server.js", serverCode);
+      zip.file("package.json", packageJson);
+      zip.file("README.md", `# ${serverName}
+
+Generated MCP server with the following tools:
+${tools.map(tool => `- **${tool.name}**: ${tool.description}`).join('\n')}
+
+## Installation
+
+1. Install dependencies:
+   \`\`\`bash
+   npm install
+   \`\`\`
+
+2. Run the server:
+   \`\`\`bash
+   npm start
+   \`\`\`
+
+## Usage
+
+This MCP server can be used with any MCP-compatible client. The server runs on stdio transport by default.
+`);
+
+      // Generate and download ZIP file
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const zipUrl = URL.createObjectURL(zipBlob);
+      
+      const linkElement = document.createElement('a');
+      linkElement.href = zipUrl;
+      linkElement.download = `${serverName}.zip`;
+      linkElement.click();
+      
+      // Clean up the URL object
+      setTimeout(() => URL.revokeObjectURL(zipUrl), 100);
+      
+      toast.success("MCP server generated and downloaded as ZIP");
+    } catch (error) {
+      console.error("Error generating MCP server:", error);
+      toast.error("Failed to generate MCP server");
+    }
   }, [nodes]);
+
+  // Auto-layout function to arrange nodes in a proper grid
+  const handleAutoLayout = useCallback(() => {
+    toast.info("Arranging nodes...");
+    
+    setNodes(currentNodes => {
+      // Separate different types of nodes
+      const inputNodes = currentNodes.filter(node => node.type === 'json-input-node');
+      const toolNodes = currentNodes.filter(node => node.type === 'tool-node');
+      const otherNodes = currentNodes.filter(node => 
+        node.type !== 'json-input-node' && node.type !== 'tool-node'
+      );
+
+      // Use centralized layout configuration
+      const updatedNodes = [...currentNodes];
+
+      // Position input nodes first (left column, well-spaced vertically)
+      inputNodes.forEach((node, index) => {
+        const nodeIndex = updatedNodes.findIndex(n => n.id === node.id);
+        if (nodeIndex !== -1) {
+          updatedNodes[nodeIndex] = {
+            ...node,
+            position: {
+              x: LAYOUT_CONFIG.BASE_X,
+              y: LAYOUT_CONFIG.BASE_Y + (index * LAYOUT_CONFIG.INPUT_NODE_SPACING)
+            }
+          };
+        }
+      });
+
+      // Group tool nodes by their source connections for better organization
+      const getConnectedInputNode = (toolNode: any) => {
+        return edges.find(edge => edge.target === toolNode.id)?.source || null;
+      };
+
+      // Group tool nodes by their input source
+      const toolGroups: { [key: string]: any[] } = {};
+      const ungroupedTools: any[] = [];
+
+      toolNodes.forEach(toolNode => {
+        const sourceId = getConnectedInputNode(toolNode);
+        if (sourceId && inputNodes.find(n => n.id === sourceId)) {
+          if (!toolGroups[sourceId]) {
+            toolGroups[sourceId] = [];
+          }
+          toolGroups[sourceId].push(toolNode);
+        } else {
+          ungroupedTools.push(toolNode);
+        }
+      });
+
+      // Position tool nodes in groups relative to their input nodes
+      let globalToolIndex = 0;
+      
+      // Position grouped tools first
+      inputNodes.forEach((inputNode, inputIndex) => {
+        const connectedTools = toolGroups[inputNode.id] || [];
+        
+        connectedTools.forEach((toolNode, toolIndex) => {
+          const row = Math.floor(toolIndex / LAYOUT_CONFIG.NODES_PER_ROW);
+          const col = toolIndex % LAYOUT_CONFIG.NODES_PER_ROW;
+          
+          const nodeIndex = updatedNodes.findIndex(n => n.id === toolNode.id);
+          if (nodeIndex !== -1) {
+            updatedNodes[nodeIndex] = {
+              ...toolNode,
+              position: {
+                x: LAYOUT_CONFIG.BASE_X + LAYOUT_CONFIG.TOOL_GRID_OFFSET_X + (col * (LAYOUT_CONFIG.NODE_WIDTH + LAYOUT_CONFIG.HORIZONTAL_SPACING)),
+                y: LAYOUT_CONFIG.BASE_Y + (inputIndex * LAYOUT_CONFIG.INPUT_NODE_SPACING) + (row * (LAYOUT_CONFIG.NODE_HEIGHT + LAYOUT_CONFIG.VERTICAL_SPACING))
+              }
+            };
+          }
+        });
+        
+        globalToolIndex += connectedTools.length;
+      });
+
+      // Position ungrouped tool nodes in a separate area
+      ungroupedTools.forEach((toolNode, index) => {
+        const row = Math.floor(index / LAYOUT_CONFIG.NODES_PER_ROW);
+        const col = index % LAYOUT_CONFIG.NODES_PER_ROW;
+        
+        const nodeIndex = updatedNodes.findIndex(n => n.id === toolNode.id);
+        if (nodeIndex !== -1) {
+          updatedNodes[nodeIndex] = {
+            ...toolNode,
+            position: {
+              x: LAYOUT_CONFIG.BASE_X + LAYOUT_CONFIG.TOOL_GRID_OFFSET_X + (col * (LAYOUT_CONFIG.NODE_WIDTH + LAYOUT_CONFIG.HORIZONTAL_SPACING)),
+              y: LAYOUT_CONFIG.BASE_Y + (inputNodes.length * LAYOUT_CONFIG.INPUT_NODE_SPACING) + 200 + (row * (LAYOUT_CONFIG.NODE_HEIGHT + LAYOUT_CONFIG.VERTICAL_SPACING))
+            }
+          };
+        }
+      });
+
+      // Position other nodes if any (far right)
+      otherNodes.forEach((node, index) => {
+        const nodeIndex = updatedNodes.findIndex(n => n.id === node.id);
+        if (nodeIndex !== -1) {
+          updatedNodes[nodeIndex] = {
+            ...node,
+            position: {
+              x: LAYOUT_CONFIG.BASE_X + LAYOUT_CONFIG.OTHER_NODES_OFFSET_X,
+              y: LAYOUT_CONFIG.BASE_Y + (index * (LAYOUT_CONFIG.NODE_HEIGHT + LAYOUT_CONFIG.VERTICAL_SPACING))
+            }
+          };
+        }
+      });
+
+      return updatedNodes;
+    });
+
+    // Auto-fit the view after layout with a slight delay
+    setTimeout(() => {
+      // This will trigger the fitView in the FlowWrapper useEffect
+      setNodes(nodes => [...nodes]);
+    }, 150);
+
+    toast.success("Nodes arranged automatically");
+  }, [setNodes, edges]); // Added edges as dependency to consider connections
 
 
   return (
@@ -525,6 +726,7 @@ export default function McpFlow(): React.JSX.Element {
       <FloatingButton 
         saveFlow={saveFlow}
         onGenerateMcpServer={generateMcpServer}
+        onAutoLayout={handleAutoLayout}
       />
 
       <FloatingMenu 

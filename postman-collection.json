@@ -1,0 +1,387 @@
+{
+    "info": {
+      "name": "Todo App API Collection",
+      "description": "Complete API collection for the Todo App with all endpoints",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+      "version": "1.0.0"
+    },
+    "variable": [
+      {
+        "key": "baseUrl",
+        "value": "http://localhost:3000",
+        "type": "string",
+        "description": "Base URL for the Todo App API"
+      },
+      {
+        "key": "todoId",
+        "value": "{{$randomUUID}}",
+        "type": "string",
+        "description": "Sample todo ID for testing"
+      }
+    ],
+    "item": [
+      {
+        "name": "Todos",
+        "item": [
+          {
+            "name": "Get All Todos",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/api/todos?completed=&priority=&limit=&offset=&search=",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos"],
+                "query": [
+                  {
+                    "key": "completed",
+                    "value": "",
+                    "description": "Filter by completion status (true/false)"
+                  },
+                  {
+                    "key": "priority",
+                    "value": "",
+                    "description": "Filter by priority (low/medium/high)"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "",
+                    "description": "Limit number of results"
+                  },
+                  {
+                    "key": "offset",
+                    "value": "",
+                    "description": "Offset for pagination"
+                  },
+                  {
+                    "key": "search",
+                    "value": "",
+                    "description": "Search in title and description"
+                  }
+                ]
+              },
+              "description": "Retrieve all todos with optional filtering by completion status, priority, pagination, and search"
+            }
+          },
+          {
+            "name": "Create Todo",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Sample Todo\",\n  \"description\": \"This is a sample todo description\",\n  \"due_date\": \"2025-12-31T23:59:59.000Z\",\n  \"priority\": \"medium\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/todos",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos"]
+              },
+              "description": "Create a new todo item"
+            }
+          },
+          {
+            "name": "Get Todo by ID",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/api/todos/{{todoId}}",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos", "{{todoId}}"]
+              },
+              "description": "Retrieve a specific todo by its ID"
+            }
+          },
+          {
+            "name": "Update Todo",
+            "request": {
+              "method": "PUT",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Updated Todo Title\",\n  \"description\": \"Updated description\",\n  \"completed\": true,\n  \"due_date\": \"2025-12-31T23:59:59.000Z\",\n  \"priority\": \"high\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/todos/{{todoId}}",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos", "{{todoId}}"]
+              },
+              "description": "Update an existing todo by its ID"
+            }
+          },
+          {
+            "name": "Delete Todo",
+            "request": {
+              "method": "DELETE",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/api/todos/{{todoId}}",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos", "{{todoId}}"]
+              },
+              "description": "Delete a specific todo by its ID"
+            }
+          }
+        ],
+        "description": "CRUD operations for individual todos"
+      },
+      {
+        "name": "Active Todos",
+        "item": [
+          {
+            "name": "Get Active Todos",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/api/todos/active?limit=&offset=&priority=&status=",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos", "active"],
+                "query": [
+                  {
+                    "key": "limit",
+                    "value": "",
+                    "description": "Limit number of results"
+                  },
+                  {
+                    "key": "offset",
+                    "value": "",
+                    "description": "Offset for pagination"
+                  },
+                  {
+                    "key": "priority",
+                    "value": "",
+                    "description": "Filter by priority (low/medium/high)"
+                  },
+                  {
+                    "key": "status",
+                    "value": "",
+                    "description": "Filter by status (overdue/due_soon/normal)"
+                  }
+                ]
+              },
+              "description": "Get active (non-completed) todos with optional filtering"
+            }
+          }
+        ],
+        "description": "Operations for active todos using database view"
+      },
+      {
+        "name": "Completed Todos",
+        "item": [
+          {
+            "name": "Get Completed Todos",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/api/todos/completed?limit=&offset=",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos", "completed"],
+                "query": [
+                  {
+                    "key": "limit",
+                    "value": "",
+                    "description": "Limit number of results"
+                  },
+                  {
+                    "key": "offset",
+                    "value": "",
+                    "description": "Offset for pagination"
+                  }
+                ]
+              },
+              "description": "Get completed todos with optional pagination"
+            }
+          }
+        ],
+        "description": "Operations for completed todos using database view"
+      },
+      {
+        "name": "Bulk Operations",
+        "item": [
+          {
+            "name": "Bulk Complete Todos",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"action\": \"complete\",\n  \"todoIds\": [\n    \"{{$randomUUID}}\",\n    \"{{$randomUUID}}\"\n  ]\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/todos/bulk",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos", "bulk"]
+              },
+              "description": "Mark multiple todos as completed"
+            }
+          },
+          {
+            "name": "Bulk Incomplete Todos",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"action\": \"incomplete\",\n  \"todoIds\": [\n    \"{{$randomUUID}}\",\n    \"{{$randomUUID}}\"\n  ]\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/todos/bulk",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos", "bulk"]
+              },
+              "description": "Mark multiple todos as incomplete"
+            }
+          },
+          {
+            "name": "Bulk Delete Todos",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"action\": \"delete\",\n  \"todoIds\": [\n    \"{{$randomUUID}}\",\n    \"{{$randomUUID}}\"\n  ]\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/todos/bulk",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos", "bulk"]
+              },
+              "description": "Delete multiple todos at once"
+            }
+          },
+          {
+            "name": "Bulk Update Priority",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"action\": \"priority\",\n  \"priority\": \"high\",\n  \"todoIds\": [\n    \"{{$randomUUID}}\",\n    \"{{$randomUUID}}\"\n  ]\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/todos/bulk",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos", "bulk"]
+              },
+              "description": "Update priority for multiple todos"
+            }
+          }
+        ],
+        "description": "Bulk operations on multiple todos"
+      },
+      {
+        "name": "Statistics",
+        "item": [
+          {
+            "name": "Get Todo Statistics",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/api/todos/stats",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "todos", "stats"]
+              },
+              "description": "Get comprehensive statistics about todos (total, completed, pending, high priority, overdue)"
+            }
+          }
+        ],
+        "description": "Todo statistics and analytics"
+      }
+    ],
+    "event": [
+      {
+        "listen": "prerequest",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "// You can add pre-request scripts here if needed",
+            "// For example, to generate dynamic test data"
+          ]
+        }
+      },
+      {
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "// Common test scripts for all requests",
+            "pm.test('Status code is success', function () {",
+            "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+            "});",
+            "",
+            "pm.test('Response time is less than 2000ms', function () {",
+            "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+            "});",
+            "",
+            "pm.test('Content-Type is application/json', function () {",
+            "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+            "});"
+          ]
+        }
+      }
+    ]
+  }

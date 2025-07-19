@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { Plus, FormInputIcon, Settings } from "lucide-react";
 import { useReactFlow, Node } from "@xyflow/react";
-import { CONNECTION_RULES, NODE_TYPE_MAP, type CustomNode } from "@/lib/mcp/constants";
+import { CONNECTION_RULES, NODE_TYPE_MAP, LAYOUT_CONFIG, type CustomNode } from "@/lib/mcp/constants";
 import { nanoid } from "nanoid";
 
 interface NodeAddButtonProps {
@@ -105,13 +105,58 @@ export function NodeAddButton({
       if (!sourceNode) return nodes;
 
       const newNodeId = `${nodeType}-${Date.now()}`;
+
+      // Smart positioning to avoid overlaps
+      const calculateBestPosition = () => {
+        const baseX = sourceNode.position.x + LAYOUT_CONFIG.SOURCE_OFFSET_X; // Base offset from source
+        const baseY = sourceNode.position.y;
+        const SPACING = 50;
+
+        // Check for existing nodes connected to this source
+        const connectedNodes = nodes.filter(node => 
+          node.id !== sourceNodeId && 
+          node.position.x > sourceNode.position.x + 400 // Only consider nodes to the right
+        );
+
+        if (connectedNodes.length === 0) {
+          // No connected nodes, use base position
+          return { x: baseX, y: baseY };
+        }
+
+        // Find the best vertical position by checking for overlaps
+        let bestY = baseY;
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        while (attempts < maxAttempts) {
+          const hasOverlap = connectedNodes.some(node => {
+            const horizontalOverlap = Math.abs(baseX - node.position.x) < LAYOUT_CONFIG.NODE_WIDTH + SPACING;
+            const verticalOverlap = Math.abs(bestY - node.position.y) < LAYOUT_CONFIG.NODE_HEIGHT + SPACING;
+            return horizontalOverlap && verticalOverlap;
+          });
+
+          if (!hasOverlap) {
+            break;
+          }
+
+          // Try positions above and below
+          if (attempts % 2 === 0) {
+            bestY = baseY + ((attempts + 1) * (LAYOUT_CONFIG.NODE_HEIGHT + SPACING));
+          } else {
+            bestY = baseY - ((attempts + 1) * (LAYOUT_CONFIG.NODE_HEIGHT + SPACING));
+          }
+          attempts++;
+        }
+
+        return { x: baseX, y: bestY };
+      };
+
+      const position = calculateBestPosition();
+      
       const newNode: CustomNode = {
         id: newNodeId,
         type: targetNodeType,
-        position: {
-          x: sourceNode.position.x + 450,
-          y: sourceNode.position.y,
-        },
+        position: position,
         data: {},
       };
 

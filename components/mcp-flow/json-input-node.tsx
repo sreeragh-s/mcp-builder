@@ -12,6 +12,7 @@ import { BaseHandle } from "./base-handle";
 import { NodeAddButton } from "./node-add-button";
 import { toast } from "sonner";
 import { nanoid } from "nanoid";
+import { getConfiguredBaseUrl, replaceUrlVariables, LAYOUT_CONFIG, calculateOptimalLayout } from "@/lib/mcp/constants";
 
 interface PostmanCollection {
   info: {
@@ -19,11 +20,15 @@ interface PostmanCollection {
     description?: string;
   };
   item: PostmanItem[];
+  variable?: Array<{
+    key: string;
+    value: string;
+  }>;
 }
 
 interface PostmanItem {
   name: string;
-  request: {
+  request?: {
     method: string;
     header?: Array<{
       key: string;
@@ -33,12 +38,19 @@ interface PostmanItem {
       raw: string;
       host?: string[];
       path?: string[];
+      query?: Array<{
+        key: string;
+        value: string;
+        description?: string;
+        disabled?: boolean;
+      }>;
     } | string;
     body?: {
       mode: string;
       raw?: string;
     };
   };
+  item?: PostmanItem[]; // For nested folders
   event?: any[];
 }
 
@@ -95,16 +107,89 @@ export default function JsonInputNode({ id, data }: { id: string; data: any }) {
       const edges: any[] = [];
       let nodeIndex = 0;
 
-      // Process each item in the collection
-      collection.item.forEach((item) => {
+      // Extract base URL from configuration or collection variables
+      let baseUrl = getConfiguredBaseUrl();
+      
+      // Collection variables can override the configured base URL
+      if (collection.variable) {
+        const baseUrlVar = collection.variable.find(v => v.key === "baseUrl");
+        if (baseUrlVar && baseUrlVar.value) {
+          baseUrl = baseUrlVar.value;
+        }
+      }
+
+      // Pre-process to count total nodes for better centering
+      let totalNodeCount = 0;
+      const countItems = (items: any[]) => {
+        items.forEach((item) => {
+          if (!item || !item.name) return;
+          
+          if (item.request && item.request.method && (item.request.url || item.request.url?.raw)) {
+            totalNodeCount++;
+          } else if (item.item && Array.isArray(item.item)) {
+            countItems(item.item);
+          }
+        });
+      };
+      countItems(collection.item);
+
+      // Function to calculate position using improved grid layout
+      const calculateNodePosition = (index: number, totalNodes: number) => {
+        const { rows, cols } = calculateOptimalLayout(totalNodes);
+        const row = Math.floor(index / cols);
+        const col = index % cols;
+        
+        // Start from source position and create a cleaner grid
+        const startX = sourceNode.position.x + LAYOUT_CONFIG.SOURCE_OFFSET_X;
+        const startY = sourceNode.position.y;
+        
+        // Calculate centered grid position based on optimal layout
+        const gridWidth = cols * (LAYOUT_CONFIG.NODE_WIDTH + LAYOUT_CONFIG.HORIZONTAL_SPACING) - LAYOUT_CONFIG.HORIZONTAL_SPACING;
+        const gridHeight = rows * (LAYOUT_CONFIG.NODE_HEIGHT + LAYOUT_CONFIG.VERTICAL_SPACING) - LAYOUT_CONFIG.VERTICAL_SPACING;
+        
+        const horizontalOffset = -gridWidth / 2; // Center horizontally if needed
+        const verticalOffset = -gridHeight / 2;  // Center the grid vertically
+        
+        return {
+          x: startX + horizontalOffset + (col * (LAYOUT_CONFIG.NODE_WIDTH + LAYOUT_CONFIG.HORIZONTAL_SPACING)),
+          y: startY + verticalOffset + (row * (LAYOUT_CONFIG.NODE_HEIGHT + LAYOUT_CONFIG.VERTICAL_SPACING))
+        };
+      };
+
+      // Function to process individual request items
+      const processItem = (item: PostmanItem, parentName = "") => {
+        if (!item.request) return; // Skip items without request (folders)
+        
         const toolNodeId = `tool-${Date.now()}-${nodeIndex}`;
         
         // Extract URL information
         let url = "";
+        let parameters: any[] = [];
+        
         if (typeof item.request.url === "string") {
           url = item.request.url;
         } else if (item.request.url && item.request.url.raw) {
           url = item.request.url.raw;
+          
+          // Extract query parameters if they exist
+          if (item.request.url.query) {
+            parameters = item.request.url.query.map((query: any) => ({
+              name: query.key,
+              description: query.description || `Query parameter: ${query.key}`,
+              type: "string",
+              defaultValue: query.value || "",
+              isOptional: query.disabled || false
+            }));
+          }
+        }
+
+        // Replace variables in URL with actual values
+        url = replaceUrlVariables(url, baseUrl);
+
+        // Skip if URL is empty or invalid
+        if (!url || url.trim() === "") {
+          console.warn(`Skipping item "${item.name}" - no valid URL found`);
+          return;
         }
 
         // Extract headers
@@ -113,27 +198,57 @@ export default function JsonInputNode({ id, data }: { id: string; data: any }) {
           value: h.value
         })) || [];
 
-        // Extract body
+        // Extract body and try to parse for potential parameters
         let requestBody = "";
         if (item.request.body?.mode === "raw" && item.request.body.raw) {
           requestBody = item.request.body.raw;
+          
+          // If it's JSON, try to extract potential parameters from the structure
+          try {
+            const bodyObj = JSON.parse(item.request.body.raw);
+            if (typeof bodyObj === 'object' && bodyObj !== null) {
+              const bodyParams = Object.keys(bodyObj).map(key => ({
+                name: `body_${key}`,
+                description: `Body parameter: ${key}`,
+                type: typeof bodyObj[key] === 'number' ? 'number' : 
+                      typeof bodyObj[key] === 'boolean' ? 'boolean' : 'string',
+                defaultValue: String(bodyObj[key]),
+                isOptional: false
+              }));
+              parameters = [...parameters, ...bodyParams];
+            }
+          } catch (e) {
+            // Not valid JSON, keep as is
+          }
         }
+
+        // Create a meaningful name
+        const nodeName = parentName ? `${parentName} - ${item.name}` : item.name;
+
+        // Generate a prompt description based on the endpoint
+        const generatePromptDescription = (name: string, method: string, url: string) => {
+          const cleanUrl = url.replace(/{{.*?}}/g, '[variable]').replace(/\?.*$/, '');
+          return `Use this tool when the user needs to ${method.toLowerCase()} ${name.toLowerCase()}. This endpoint: ${cleanUrl}`;
+        };
+
+        const method = item.request.method || "GET";
+
+        // Calculate position using auto-layout
+        const position = calculateNodePosition(nodeIndex, totalNodeCount);
 
         // Create tool node
         const toolNode = {
           id: toolNodeId,
           type: "tool-node",
-          position: {
-            x: sourceNode.position.x + 450,
-            y: sourceNode.position.y + (nodeIndex * 300), // Stack vertically
-          },
+          position: position,
           data: {
-            method: item.request.method || "GET",
+            method: method,
             url: url,
             headers: headers,
             requestBody: requestBody,
-            name: item.name,
-            parameters: [], // Empty initially
+            name: nodeName,
+            parameters: parameters,
+            promptDescription: generatePromptDescription(nodeName, method, url)
           },
         };
 
@@ -151,11 +266,45 @@ export default function JsonInputNode({ id, data }: { id: string; data: any }) {
 
         edges.push(edge);
         nodeIndex++;
-      });
+      };
+
+      // Function to recursively process collection items (handles nested folders)
+      const processItems = (items: any[], parentName = "") => {
+        items.forEach((item) => {
+          // Validate item structure
+          if (!item || !item.name) {
+            console.warn("Skipping invalid item:", item);
+            return;
+          }
+          
+          if (item.request) {
+            // This is a request item - validate it has proper structure
+            if (item.request.method && (item.request.url || item.request.url?.raw)) {
+              processItem(item, parentName);
+            } else {
+              console.warn(`Skipping request item "${item.name}" - missing method or URL`);
+            }
+          } else if (item.item && Array.isArray(item.item)) {
+            // This is a folder with sub-items
+            processItems(item.item, item.name);
+          } else {
+            console.warn(`Skipping item "${item.name}" - not a request or folder`);
+          }
+        });
+      };
+
+      // Process all items in the collection
+      processItems(collection.item);
 
       // Add nodes and edges to the flow
       setNodes(nodes => [...nodes, ...toolNodes]);
       setEdges(currentEdges => [...currentEdges, ...edges]);
+
+      // Auto-fit the view after adding nodes with improved timing
+      setTimeout(() => {
+        // Trigger a re-render to ensure fitView works properly
+        setNodes(nodes => [...nodes]);
+      }, 300);
 
       toast.success(`Generated ${toolNodes.length} tool nodes from collection`);
     } catch (error) {
