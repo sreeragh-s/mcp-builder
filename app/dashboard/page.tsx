@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import McpFlow from "@/components/dashboard/mcp-flow";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,9 +12,8 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <h1>Dashboard</h1>
+    <div>
+      <McpFlow />
     </div>
   );
 }
-
