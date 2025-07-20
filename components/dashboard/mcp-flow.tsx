@@ -49,8 +49,8 @@ import { useConnectionHighlight } from "../mcp-flow/hooks/use-connection-highlig
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 // Utils
 import { createClient } from "@/lib/supabase/client";
-import { LAYOUT_CONFIG } from "@/lib/mcp/constants";
-import { generateServerCode, type ServerConfig, type Tool } from "@/lib/mcp/generate-mcp";
+import { LAYOUT_CONFIG, getConfiguredBaseUrl } from "@/lib/mcp/constants";
+import { Tool, ServerConfig, generateServerCode, convertNodeToTool } from "@/lib/mcp/generate-mcp";
 
 // Type definitions
 type NodeData = Record<string, any>;
@@ -445,11 +445,19 @@ export default function McpFlow(): React.JSX.Element {
   }, []);
 
   const generateMcpServer = useCallback(async () => {
-    // Extract tool nodes and their configurations
-    const toolNodes = nodes.filter(node => node.type === 'tool-node');
+    // Get only tool nodes that are connected to json-input nodes
+    const connectedToolNodes = nodes.filter(node => {
+      if (node.type !== 'tool-node') return false;
+      
+      // Check if this tool node has an incoming connection from a json-input node
+      return edges.some(edge => {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        return edge.target === node.id && sourceNode?.type === 'json-input-node';
+      });
+    });
     
-    if (toolNodes.length === 0) {
-      toast.error("No tool nodes found to generate MCP server");
+    if (connectedToolNodes.length === 0) {
+      toast.error("No connected tool nodes found. Please connect tool nodes to JSON input nodes to generate MCP server.");
       return;
     }
 
@@ -459,48 +467,27 @@ export default function McpFlow(): React.JSX.Element {
       const userId = user?.id?.slice(0, 8) || 'user';
       const serverName = `mcp-server-${userId}`;
 
-      // Convert tool nodes to the proper Tool format
-      const tools: Tool[] = toolNodes.map(node => ({
-        name: node.data?.url?.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '_') || `tool_${node.id}`,
-        description: node.data?.promptDescription || "Generated tool from flow",
-        parameters: node.data?.parameters || [],
-        implementation: `async ({ ${node.data?.parameters?.map((p: any) => p.name).join(', ') || ''} }) => {
-    // Implementation for ${node.data?.url || 'endpoint'}
-    const url = "${node.data?.url || ''}";
-    const method = "${node.data?.method || 'GET'}";
-    
-    try {
-      const response = await fetch(url${node.data?.method === 'POST' || node.data?.method === 'PUT' ? `, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          ${node.data?.headers?.map((h: any) => `'${h.key}': '${h.value}'`).join(',\n          ') || ''}
-        },
-        body: JSON.stringify(${node.data?.requestBody ? JSON.stringify(node.data.requestBody) : '{}'})
-      }` : ''});
+      // Get the current base URL configuration
+      const currentBaseUrl = getConfiguredBaseUrl();
+
+      // Convert connected tool nodes to the proper Tool format
+      const tools: Tool[] = [];
+      const usedNames = new Set<string>();
       
-      if (!response.ok) {
-        throw new Error(\`HTTP error! status: \${response.status}\`);
-      }
-      
-      const data = await response.json();
-      return { 
-        content: [{
-          type: "text",
-          text: JSON.stringify(data, null, 2)
-        }]
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: "text", 
-          text: \`Error: \${error.message}\`
-        }],
-        isError: true
-      };
-    }
-  }`
-      }));
+      connectedToolNodes.forEach(node => {
+        let tool = convertNodeToTool(node, currentBaseUrl);
+        let originalName = tool.name;
+        let counter = 1;
+        
+        // Ensure unique tool names
+        while (usedNames.has(tool.name)) {
+          tool.name = `${originalName}-${counter}`;
+          counter++;
+        }
+        
+        usedNames.add(tool.name);
+        tools.push(tool);
+      });
 
       // Create server configuration
       const serverConfig: ServerConfig = {
@@ -514,11 +501,11 @@ export default function McpFlow(): React.JSX.Element {
       };
 
       // Generate server code and package.json
-      const { serverCode, packageJson } = generateServerCode(serverConfig);
+      const { serverCode, packageJson } = generateServerCode(serverConfig, currentBaseUrl);
 
       // Create ZIP file
       const zip = new JSZip();
-      zip.file("server.js", serverCode);
+      zip.file("index.js", serverCode);
       zip.file("package.json", packageJson);
       zip.file("README.md", `# ${serverName}
 
@@ -532,7 +519,12 @@ ${tools.map(tool => `- **${tool.name}**: ${tool.description}`).join('\n')}
    npm install
    \`\`\`
 
-2. Run the server:
+2. Make the server executable (if needed):
+   \`\`\`bash
+   chmod +x index.js
+   \`\`\`
+
+3. Run the server:
    \`\`\`bash
    npm start
    \`\`\`
@@ -540,6 +532,63 @@ ${tools.map(tool => `- **${tool.name}**: ${tool.description}`).join('\n')}
 ## Usage
 
 This MCP server can be used with any MCP-compatible client. The server runs on stdio transport by default.
+
+### Configuration Examples
+
+#### Claude Desktop
+Add to your \`claude_desktop_config.json\`:
+\`\`\`json
+{
+  "mcpServers": {
+    "${serverName}": {
+      "command": "node",
+      "args": ["path/to/${serverName}/index.js"]
+    }
+  }
+}
+\`\`\`
+
+#### Continue.dev
+Add to your MCP configuration:
+\`\`\`json
+{
+  "command": "node",
+  "args": ["path/to/${serverName}/index.js"]
+}
+\`\`\`
+
+#### Using npx (if published)
+\`\`\`json
+{
+  "command": "npx",
+  "args": ["-y", "${serverName}"]
+}
+\`\`\`
+
+## Available Tools
+
+${tools.map(tool => `### ${tool.name}
+${tool.description}
+
+Parameters:
+${Object.entries(tool.parameters).map(([name, param]) => `- **${name}** (${param.type}${param.optional ? ', optional' : ''}): ${param.description}`).join('\n') || 'No parameters'}
+`).join('\n')}
+
+## Troubleshooting
+
+If you get "Command not found" errors:
+
+1. Ensure Node.js is installed and accessible in your PATH
+2. Verify the path to \`index.js\` is correct in your configuration
+3. Check that the file has execute permissions: \`chmod +x index.js\`
+4. For Windows, you may need to use the full path to node.exe
+
+## Development
+
+To test the server manually:
+\`\`\`bash
+echo '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0.0"}}}' | node index.js
+\`\`\`
 `);
 
       // Generate and download ZIP file
@@ -554,12 +603,12 @@ This MCP server can be used with any MCP-compatible client. The server runs on s
       // Clean up the URL object
       setTimeout(() => URL.revokeObjectURL(zipUrl), 100);
       
-      toast.success("MCP server generated and downloaded as ZIP");
+      toast.success(`MCP server generated with ${tools.length} connected tools and downloaded as ZIP`);
     } catch (error) {
       console.error("Error generating MCP server:", error);
       toast.error("Failed to generate MCP server");
     }
-  }, [nodes]);
+  }, [nodes, edges]);
 
   // Auto-layout function to arrange nodes in a proper grid
   const handleAutoLayout = useCallback(() => {

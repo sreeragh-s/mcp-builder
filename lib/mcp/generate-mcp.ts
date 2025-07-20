@@ -1,320 +1,196 @@
-export interface Parameter {
-    name: string
-    type: 'string' | 'number' | 'boolean' | 'array' | 'object'
-    description?: string
-    required: boolean
-    defaultValue?: string
+// Types for MCP server generation
+import { replaceUrlVariables } from './constants';
+
+export interface Tool {
+  name: string;
+  description: string;
+  parameters: Record<string, {
+    type: string;
+    description: string;
+    optional?: boolean;
+  }>;
+  implementation: string;
+}
+
+export interface ServerConfig {
+  name: string;
+  version: string;
+  description: string;
+  transport: string;
+  tools: Tool[];
+  resources: any[];
+  prompts: any[];
+}
+
+// Helper function to convert tool node data to MCP parameters format
+function convertToMcpParameters(parameters: any[]): Record<string, { type: string; description: string; optional?: boolean }> {
+  const mcpParams: Record<string, { type: string; description: string; optional?: boolean }> = {};
+  
+  if (!parameters || !Array.isArray(parameters)) {
+    return mcpParams;
   }
   
-  export interface Tool {
-    name: string
-    description: string
-    parameters: Parameter[]
-    implementation: string
-  }
-  
-  export interface Resource {
-    name: string
-    uri: string
-    description: string
-    isDynamic: boolean
-    parameters: Parameter[]
-    implementation: string
-  }
-  
-  export interface Prompt {
-    name: string
-    description: string
-    parameters: Parameter[]
-    template: string
-  }
-  
-  export interface ServerConfig {
-    name: string
-    version: string
-    description?: string
-    transport: 'stdio' | 'http'
-    tools: Tool[]
-    resources: Resource[]
-    prompts: Prompt[]
-  }
-  
-  export function generateServerCode(config: ServerConfig): { serverCode: string; packageJson: string } {
-    const serverCode = generateServerJS(config)
-    const packageJson = generatePackageJSON(config)
-    
-    return { serverCode, packageJson }
-  }
-  
-  function generateServerJS(config: ServerConfig): string {
-    const imports = generateImports(config)
-    const serverSetup = generateServerSetup(config)
-    const toolsCode = generateToolsCode(config.tools)
-    const resourcesCode = generateResourcesCode(config.resources)
-    const promptsCode = generatePromptsCode(config.prompts)
-    const transportCode = generateTransportCode(config.transport)
-  
-    return `${imports}
-  
-  ${serverSetup}
-  
-  ${toolsCode}
-  
-  ${resourcesCode}
-  
-  ${promptsCode}
-  
-  ${transportCode}
-  `
-  }
-  
-  function generateImports(config: ServerConfig): string {
-    const imports = [
-      `import { McpServer${config.resources.some(r => r.isDynamic) ? ', ResourceTemplate' : ''} } from "@modelcontextprotocol/sdk/server/mcp.js";`,
-    ]
-  
-    if (config.transport === 'stdio') {
-      imports.push(`import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";`)
-    } else {
-      imports.push(`import express from "express";`)
-      imports.push(`import { randomUUID } from "node:crypto";`)
-      imports.push(`import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";`)
-      imports.push(`import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";`)
-    }
-  
-    if (config.tools.length > 0 || config.resources.length > 0 || config.prompts.length > 0) {
-      imports.push(`import { z } from "zod";`)
-    }
-  
-    return imports.join('\n')
-  }
-  
-  function generateServerSetup(config: ServerConfig): string {
-    return `// Create MCP server
-  const server = new McpServer({
-    name: "${config.name}",
-    version: "${config.version}"${config.description ? `,\n  description: "${config.description}"` : ''}
-  });`
-  }
-  
-  function generateToolsCode(tools: Tool[]): string {
-    if (tools.length === 0) return ''
-  
-    const toolsCode = tools.map(tool => {
-      const paramsSchema = generateParametersSchema(tool.parameters)
-      const implementation = tool.implementation.trim()
-      
-      return `// ${tool.description}
-  server.tool(
-    "${tool.name}",
-    ${paramsSchema},
-    ${implementation}
-  );`
-    }).join('\n\n')
-  
-    return `// Tools
-  ${toolsCode}`
-  }
-  
-  function generateResourcesCode(resources: Resource[]): string {
-    if (resources.length === 0) return ''
-  
-    const resourcesCode = resources.map(resource => {
-      const implementation = resource.implementation.trim()
-      
-      if (resource.isDynamic) {
-        return `// ${resource.description}
-  server.resource(
-    "${resource.name}",
-    new ResourceTemplate("${resource.uri}", { list: undefined }),
-    ${implementation}
-  );`
-      } else {
-        return `// ${resource.description}
-  server.resource(
-    "${resource.name}",
-    "${resource.uri}",
-    ${implementation}
-  );`
-      }
-    }).join('\n\n')
-  
-    return `// Resources
-  ${resourcesCode}`
-  }
-  
-  function generatePromptsCode(prompts: Prompt[]): string {
-    if (prompts.length === 0) return ''
-  
-    const promptsCode = prompts.map(prompt => {
-      const paramsSchema = generateParametersSchema(prompt.parameters)
-      const template = prompt.template.replace(/\{\{(\w+)\}\}/g, '${$1}')
-      
-      return `// ${prompt.description}
-  server.prompt(
-    "${prompt.name}",
-    ${paramsSchema},
-    (${prompt.parameters.length > 0 ? `{ ${prompt.parameters.map(p => p.name).join(', ')} }` : ''}) => ({
-      messages: [{
-        role: "user",
-        content: {
-          type: "text",
-          text: \`${template}\`
-        }
-      }]
-    })
-  );`
-    }).join('\n\n')
-  
-    return `// Prompts
-  ${promptsCode}`
-  }
-  
-  function generateParametersSchema(parameters: Parameter[]): string {
-    if (parameters.length === 0) return '{}'
-  
-    const schemaEntries = parameters.map(param => {
-      let zodType = ''
-      switch (param.type) {
-        case 'string':
-          zodType = 'z.string()'
-          break
-        case 'number':
-          zodType = 'z.number()'
-          break
-        case 'boolean':
-          zodType = 'z.boolean()'
-          break
-        case 'array':
-          zodType = 'z.array(z.any())'
-          break
-        case 'object':
-          zodType = 'z.object({})'
-          break
-      }
-  
-      if (!param.required) {
-        zodType += '.optional()'
-      }
-  
-      if (param.defaultValue) {
-        zodType += `.default(${JSON.stringify(param.defaultValue)})`
-      }
-  
-      return `${param.name}: ${zodType}`
-    })
-  
-    return `{\n    ${schemaEntries.join(',\n    ')}\n  }`
-  }
-  
-  function generateTransportCode(transport: 'stdio' | 'http'): string {
-    if (transport === 'stdio') {
-      return `// Start the server with stdio transport
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  
-  console.log("MCP server running on stdio");`
-    } else {
-      return `// HTTP Server Setup
-  const app = express();
-  app.use(express.json());
-  
-  // Map to store transports by session ID
-  const transports = {};
-  
-  // Handle POST requests for client-to-server communication
-  app.post('/mcp', async (req, res) => {
-    const sessionId = req.headers['mcp-session-id'];
-    let transport;
-  
-    if (sessionId && transports[sessionId]) {
-      transport = transports[sessionId];
-    } else if (!sessionId && isInitializeRequest(req.body)) {
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (sessionId) => {
-          transports[sessionId] = transport;
-        }
-      });
-  
-      transport.onclose = () => {
-        if (transport.sessionId) {
-          delete transports[transport.sessionId];
-        }
+  parameters.forEach(param => {
+    if (param.name && param.type) {
+      mcpParams[param.name] = {
+        type: param.type,
+        description: param.description || `Parameter ${param.name}`,
+        optional: param.required !== true
       };
-  
-      await server.connect(transport);
-    } else {
-      res.status(400).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Bad Request: No valid session ID provided',
-        },
-        id: null,
-      });
-      return;
     }
-  
-    await transport.handleRequest(req, res, req.body);
   });
   
-  // Handle GET requests for server-to-client notifications via SSE
-  app.get('/mcp', async (req, res) => {
-    const sessionId = req.headers['mcp-session-id'];
-    if (!sessionId || !transports[sessionId]) {
-      res.status(400).send('Invalid or missing session ID');
-      return;
-    }
+  return mcpParams;
+}
+
+// Helper function to generate parameter destructuring for function signature
+function generateParameterSignature(parameters: Record<string, any>): string {
+  const paramNames = Object.keys(parameters);
+  return paramNames.length > 0 ? `{ ${paramNames.join(', ')} }` : '{}';
+}
+
+// Helper function to generate URL with query parameters
+function generateUrlWithParams(baseUrl: string, method: string, parameters: Record<string, any>): string {
+  const paramNames = Object.keys(parameters);
+  
+  if (method === 'GET' && paramNames.length > 0) {
+    const queryParams = paramNames
+      .filter(name => parameters[name].optional)
+      .map(name => `${name} ? \`${name}=\${${name}}\` : null`)
+      .join(', ');
     
-    const transport = transports[sessionId];
-    await transport.handleRequest(req, res);
-  });
-  
-  // Handle DELETE requests for session termination
-  app.delete('/mcp', async (req, res) => {
-    const sessionId = req.headers['mcp-session-id'];
-    if (!sessionId || !transports[sessionId]) {
-      res.status(400).send('Invalid or missing session ID');
-      return;
-    }
-    
-    const transport = transports[sessionId];
-    await transport.handleRequest(req, res);
-  });
-  
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(\`MCP server running on HTTP port \${PORT}\`);
-  });`
+    if (queryParams) {
+      return `\`${baseUrl}?\${[${queryParams}].filter(Boolean).join('&')}\``;
     }
   }
   
-  function generatePackageJSON(config: ServerConfig): string {
-    const dependencies: Record<string, string> = {
-      "@modelcontextprotocol/sdk": "^1.0.0",
-      "zod": "^3.25.0"
-    }
+  return `"${baseUrl}"`;
+}
+
+// Generate MCP tool implementation based on node data
+function generateToolImplementation(nodeData: any, baseUrl?: string): string {
+  const method = nodeData.method || 'GET';
+  const rawUrl = nodeData.url || '';
+  const url = replaceUrlVariables(rawUrl, baseUrl); // Replace {{baseUrl}} and other variables
+  const parameters = convertToMcpParameters(nodeData.parameters || []);
+  const paramSignature = generateParameterSignature(parameters);
+  const headers = nodeData.headers || [];
+  const requestBody = nodeData.requestBody;
   
-    if (config.transport === 'http') {
-      dependencies["express"] = "^4.18.0"
-    }
+  // Generate headers string
+  const headersStr = headers
+    .map((h: any) => `        "${h.key}": "${h.value}"`)
+    .join(',\n');
   
-    const packageJson = {
-      name: config.name,
-      version: config.version,
-      description: config.description || `MCP server: ${config.name}`,
-      main: "server.js",
-      type: "module",
-      scripts: {
-        start: "node server.js",
-        dev: "node --watch server.js"
-      },
-      dependencies,
-      keywords: ["mcp", "model-context-protocol", "ai", "llm"],
-      author: "",
-      license: "MIT"
-    }
+  // Generate the URL (with query params for GET requests)
+  const urlExpression = generateUrlWithParams(url, method, parameters);
   
-    return JSON.stringify(packageJson, null, 2)
-  } 
+  return `async (${paramSignature}) => {
+    try {
+      const url = ${urlExpression};
+      ${method === 'GET' ? `
+      const response = await axios.get(url);` : `
+      const response = await axios.${method.toLowerCase()}(url, ${requestBody ? JSON.stringify(requestBody, null, 6) : 'undefined'}, {
+        headers: {
+          "Content-Type": "application/json",${headersStr ? '\n' + headersStr : ''}
+        }
+      });`}
+      
+      return {
+        content: [
+          { type: "text", text: JSON.stringify(response.data, null, 2) },
+        ],
+      };
+    } catch (error) {
+      throw new Error(\`Failed to ${method.toLowerCase()} ${url.replace(/\$\{.*?\}/g, '[param]')}: \${error.message}\`);
+    }
+  }`;
+}
+
+// Convert tool node to MCP tool format
+export function convertNodeToTool(node: any, baseUrl?: string): Tool {
+  const nodeData = node.data || {};
+  
+  // Generate a more unique tool name by combining URL path and method
+  let toolName = '';
+  if (nodeData.url) {
+    try {
+      const processedUrl = replaceUrlVariables(nodeData.url, baseUrl);
+      const url = new URL(processedUrl);
+      const pathParts = url.pathname.split('/').filter(part => part.length > 0);
+      const method = (nodeData.method || 'GET').toLowerCase();
+      
+      if (pathParts.length > 0) {
+        // Use the last meaningful part of the path + method
+        const lastPart = pathParts[pathParts.length - 1];
+        toolName = `${method}-${lastPart}`.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+      } else {
+        // Fallback to method + domain
+        const domain = url.hostname.replace(/[^a-zA-Z0-9]/g, '-');
+        toolName = `${method}-${domain}`.toLowerCase();
+      }
+    } catch (error) {
+      // If URL parsing fails, create a safe name from the processed URL string
+      const processedUrl = replaceUrlVariables(nodeData.url, baseUrl);
+      const safeUrl = processedUrl.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+      const method = (nodeData.method || 'GET').toLowerCase();
+      toolName = `${method}-${safeUrl}`.substring(0, 50); // Limit length
+    }
+  } else {
+    // Fallback to node ID
+    toolName = `tool-${node.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+  }
+  
+  return {
+    name: toolName,
+    description: nodeData.promptDescription || `Generated tool for ${replaceUrlVariables(nodeData.url || 'endpoint', baseUrl)}`,
+    parameters: convertToMcpParameters(nodeData.parameters || []),
+    implementation: generateToolImplementation(nodeData, baseUrl)
+  };
+}
+
+// Generate complete MCP server code
+export function generateServerCode(config: ServerConfig, baseUrl?: string): { serverCode: string; packageJson: string } {
+  const serverCode = `#!/usr/bin/env node
+
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import axios from "axios";
+
+const server = new McpServer({
+  name: "${config.name}",
+  version: "${config.version}",
+});
+
+${config.tools.map(tool => `server.tool(
+  "${tool.name}",
+  ${JSON.stringify(tool.parameters, null, 2)},
+  ${tool.implementation}
+);`).join('\n\n')}
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+`;
+
+  const packageJson = `{
+  "name": "${config.name}",
+  "version": "${config.version}",
+  "description": "${config.description}",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "axios": "^1.9.0",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2"
+  }
+}`;
+
+  return { serverCode, packageJson };
+} 
