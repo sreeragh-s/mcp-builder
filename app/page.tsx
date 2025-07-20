@@ -418,40 +418,7 @@ export default function MCPBuilderLanding() {
           </div>
         </section>
 
-        {/* Social Proof */}
-        <section className="w-full py-12 md:py-24 lg:py-32 border-t border-white/10">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-6 text-center">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h2 className="text-sm font-light text-white uppercase tracking-[0.4em]">Trusted by developers</h2>
-                  <h2 className="text-6xl font-black text-white tracking-tighter">WORLDWIDE</h2>
-                </div>
-                <p className="mx-auto max-w-[700px] text-gray-300 md:text-lg font-light leading-relaxed italic">
-                  "Join thousands of developers connecting their APIs to AI tools with MCP Builder."
-                </p>
-              </div>
-            </div>
-            <div className="mx-auto grid max-w-5xl items-center gap-8 py-16 lg:grid-cols-4 lg:gap-12">
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="text-5xl font-black text-white">5K+</div>
-                <div className="text-xs text-gray-400 font-mono uppercase tracking-wider">collections_converted</div>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="text-5xl font-black text-white">2K+</div>
-                <div className="text-xs text-gray-400 font-mono uppercase tracking-wider">mcp_servers_deployed</div>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="text-5xl font-black text-white">99.9%</div>
-                <div className="text-xs text-gray-400 font-mono uppercase tracking-wider">uptime_guarantee</div>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="text-5xl font-black text-white">30s</div>
-                <div className="text-xs text-gray-400 font-mono uppercase tracking-wider">average_deploy_time</div>
-              </div>
-            </div>
-          </div>
-        </section>
+       
 
         {/* CTA Section */}
         <section className="w-full py-12 md:py-24 lg:py-32 bg-white">
