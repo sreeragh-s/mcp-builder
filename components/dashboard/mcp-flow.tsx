@@ -475,8 +475,8 @@ export default function McpFlow(): React.JSX.Element {
       const usedNames = new Set<string>();
       
       connectedToolNodes.forEach(node => {
-        let tool = convertNodeToTool(node, currentBaseUrl);
-        let originalName = tool.name;
+        const tool = convertNodeToTool(node, currentBaseUrl);
+        const originalName = tool.name;
         let counter = 1;
         
         // Ensure unique tool names

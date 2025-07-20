@@ -1,105 +1,213 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# MCP Builder 🔧
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+A visual, drag-and-drop flow builder for creating **Model Context Protocol (MCP) servers**. Transform your API endpoints into AI-ready tools with an intuitive interface.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+## What is MCP Builder?
 
-## Features
+MCP Builder is a Next.js application that allows you to visually design and generate MCP (Model Context Protocol) servers. MCP is a protocol that enables AI models to interact with external tools and resources in a standardized way. With MCP Builder, you can:
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Middleware
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+- **Visually design API workflows** using a drag-and-drop interface
+- **Import Postman collections** to automatically generate tool nodes
+- **Generate ready-to-deploy MCP servers** with complete TypeScript/JavaScript code
+- **Manage authentication** with secure user accounts
+- **Save and share flows** with persistent storage
 
-## Demo
+## ✨ Features
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+### 🎨 Visual Flow Builder
+- Drag-and-drop interface powered by React Flow
+- Tool nodes for API endpoints with full configuration
+- JSON input nodes for data processing
+- Real-time connection validation
+- Auto-layout for imported collections
 
-## Deploy to Vercel
+### 🚀 Postman Integration
+- Import entire Postman collections with one click
+- Automatic parameter extraction from query strings and request bodies
+- Header and authentication configuration preservation
+- Support for nested folder structures
 
-Vercel deployment will guide you through creating a Supabase account and project.
+### 🔧 MCP Server Generation
+- Complete TypeScript/JavaScript server code generation
+- Automatic tool registration and parameter handling
+- Built-in error handling and response formatting
+- Ready-to-deploy Node.js packages with dependencies
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+### 🔐 User Management
+- Secure authentication with Supabase Auth
+- Personal flow storage and management
+- Multi-tenant architecture with row-level security
+- Email confirmation and password recovery
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+### 🎯 Developer Experience
+- Modern React 19 with TypeScript
+- shadcn/ui components for consistent design
+- Dark/light theme support
+- Real-time validation and error handling
+- Responsive design for all screen sizes
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+## 🛠️ Tech Stack
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+### Frontend
+- **Next.js 15** - React framework with App Router
+- **React 19** - Latest React with concurrent features
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first styling
+- **shadcn/ui** - Modern component library
+- **React Flow** - Interactive node-based editor
+- **Framer Motion** - Smooth animations
 
-## Clone and run locally
+### Backend & Database
+- **Supabase** - Backend-as-a-Service
+- **PostgreSQL** - Relational database with JSON support
+- **Row Level Security** - Multi-tenant data isolation
+- **Real-time subscriptions** - Live data updates
 
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+### Development Tools
+- **ESLint** - Code linting and formatting
+- **Autoprefixer** - CSS vendor prefixes
+- **PostCSS** - CSS processing
+- **Turbopack** - Fast development bundler
 
-2. Create a Next.js app using the Supabase Starter template npx command
+## 🚀 Getting Started
 
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
+### Prerequisites
+- Node.js 18+ 
+- npm/yarn/pnpm
+- Supabase account (free tier available)
 
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
+### 1. Clone the Repository
+```bash
+git clone https://github.com/your-username/with-supabase-app.git
+cd with-supabase-app
+```
 
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
+### 2. Install Dependencies
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
 
-3. Use `cd` to change into the app's directory
+### 3. Environment Setup
+Create a `.env.local` file in the root directory:
 
-   ```bash
-   cd with-supabase-app
-   ```
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY=your_supabase_publishable_or_anon_key
 
-4. Rename `.env.example` to `.env.local` and update the following:
 
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=[INSERT SUPABASE PROJECT API ANON KEY]
-   ```
+```
 
-   Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+### 4. Database Setup
+Run the Supabase migrations to set up the database schema:
 
-5. You can now run the Next.js local development server:
+```bash
+# Install Supabase CLI if you haven't already
+npm install -g @supabase/cli
 
-   ```bash
-   npm run dev
-   ```
+# Initialize Supabase (if not already done)
+supabase init
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+# Start local Supabase (optional for local development)
+supabase start
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+# Push migrations to your Supabase project
+supabase db push
+```
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+### 5. Start Development Server
+```bash
+npm run dev
+```
 
-## Feedback and issues
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+## 📖 Usage
 
-## More Supabase examples
+### Creating Your First Flow
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+1. **Sign up** for an account or **sign in** to an existing one
+2. **Navigate to the dashboard** where you'll see the flow builder
+3. **Add tool nodes** by dragging them from the sidebar or importing a Postman collection
+4. **Configure each tool** with API endpoints, parameters, and descriptions
+5. **Connect nodes** by dragging from output handles to input handles
+6. **Save your flow** and **generate the MCP server** code
+7. **Download** the generated server as a ZIP file
+
+### Importing Postman Collections
+
+1. Open any **JSON Input Node**
+2. Paste your **Postman collection JSON**
+3. Click **"Analyze Tools"**
+4. Watch as tool nodes are **automatically generated** with proper connections
+5. **Customize** the generated tools as needed
+
+### Generated MCP Server
+
+The generated server includes:
+- Complete Node.js project with `package.json`
+- TypeScript/JavaScript server code using `@modelcontextprotocol/sdk`
+- Automatic tool registration and parameter handling
+- Error handling and response formatting
+- Ready to deploy to any Node.js hosting platform
+
+## 🗂️ Project Structure
+
+```
+with-supabase-app/
+├── app/                    # Next.js App Router pages
+│   ├── auth/              # Authentication pages
+│   ├── dashboard/         # Protected dashboard
+│   └── layout.tsx         # Root layout
+├── components/            # React components
+│   ├── ui/               # shadcn/ui components
+│   ├── mcp-flow/         # Flow builder components
+│   └── auth-button.tsx   # Authentication components
+├── lib/                   # Utility libraries
+│   ├── mcp/              # MCP generation logic
+│   └── supabase/         # Supabase client configuration
+├── hooks/                 # Custom React hooks
+├── supabase/             # Database migrations and config
+└── public/               # Static assets
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes
+4. Run tests: `npm run test`
+5. Commit your changes: `git commit -m 'Add amazing feature'`
+6. Push to the branch: `git push origin feature/amazing-feature`
+7. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Model Context Protocol](https://modelcontextprotocol.io/) for the MCP specification
+- [Supabase](https://supabase.com/) for the amazing backend platform
+- [shadcn/ui](https://ui.shadcn.com/) for the beautiful component library
+- [React Flow](https://reactflow.dev/) for the powerful flow builder
+- [Vercel](https://vercel.com/) for the deployment platform
+
+## 📧 Support
+
+If you have any questions or need help, please:
+- Open an [issue](https://github.com/your-username/with-supabase-app/issues)
+- Join our [Discord community](https://discord.gg/your-discord)
+- Email us at support@mcpbuilder.com
+
+---
+
+**Built with ❤️ for the AI community**

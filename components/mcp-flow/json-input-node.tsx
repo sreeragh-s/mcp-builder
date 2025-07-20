@@ -73,7 +73,7 @@ export default function JsonInputNode({ id, data }: { id: string; data: any }) {
     );
   };
 
-  const validateJsonInput = (): PostmanCollection | null => {
+  const validateJsonInput = useCallback((): PostmanCollection | null => {
     try {
       const parsed = JSON.parse(jsonInput);
       
@@ -88,7 +88,7 @@ export default function JsonInputNode({ id, data }: { id: string; data: any }) {
       toast.error("Invalid JSON format");
       return null;
     }
-  };
+  }, [jsonInput]);
 
   const analyzeTools = useCallback(() => {
     const collection = validateJsonInput();
@@ -313,7 +313,7 @@ export default function JsonInputNode({ id, data }: { id: string; data: any }) {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [id, jsonInput, getNodes, setNodes, setEdges]);
+  }, [id, validateJsonInput, getNodes, setNodes, setEdges]);
 
   // Check if the output handle is connected
   const isOutputConnected = useCallback(() => {
