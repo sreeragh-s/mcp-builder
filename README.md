@@ -211,3 +211,5 @@ If you have any questions or need help, please:
 ---
 
 **Built with ❤️ for the AI community**
+
+<img src="https://img.shields.io/badge/Built%20at-TinkerSpace-blueviolet?style=for-the-badge&label=%F0%9F%92%BBBuilt%20at&labelColor=turquoise&color=white" alt="💻 Built at TinkerSpace" />
