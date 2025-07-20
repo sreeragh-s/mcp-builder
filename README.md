@@ -2,6 +2,10 @@
 
 A visual, drag-and-drop flow builder for creating **Model Context Protocol (MCP) servers**. Transform your API endpoints into AI-ready tools with an intuitive interface.
 
+## 🎥 Demo Video
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/UFSgwpAaSEk?si=FUwhdCiDeZGckhyC" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## What is MCP Builder?
 
 MCP Builder is a Next.js application that allows you to visually design and generate MCP (Model Context Protocol) servers. MCP is a protocol that enables AI models to interact with external tools and resources in a standardized way. With MCP Builder, you can:
